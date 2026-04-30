@@ -1,64 +1,81 @@
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const cosineSimilarity = (a, b) => {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
 
-const normalizeTempo = (tempo) => {
-  return clamp((tempo - 60) / (180 - 60), 0, 1);
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  if (normA === 0 || normB === 0) return 0;
+
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
-const normalizeSong = (song) => ({
-  energy: song.energy / 100,
-  danceability: song.danceability / 100,
-  valence: song.valence / 100,
-  tempo: normalizeTempo(song.tempo),
-  popularity: song.popularity / 100,
-});
-
-const similarity = (a, b) => {
-  const na = normalizeSong(a);
-  const nb = normalizeSong(b);
-
-  const distance = Math.sqrt(
-    Math.pow(na.energy - nb.energy, 2) +
-      Math.pow(na.danceability - nb.danceability, 2) +
-      Math.pow(na.valence - nb.valence, 2) +
-      Math.pow(na.tempo - nb.tempo, 2)
-  );
-
-  return 1 - distance / 2;
+const createControlVector = (controls) => {
+  return [
+    controls.danceability / 100,
+    controls.energy / 100,
+    controls.mood / 100,
+    controls.acousticness / 100,
+    0.2,
+    0.2,
+    0.2,
+    controls.tempo / 100,
+  ];
 };
 
-const sliderTargetMatch = (song, controls) => {
-  const s = normalizeSong(song);
+const getReason = (track, controls, hiddenGemBonus) => {
+  const reasons = [];
 
-  const target = {
-    energy: controls.energy / 100,
-    danceability: controls.danceability / 100,
-    valence: controls.mood / 100,
-    tempo: controls.tempo / 100,
-  };
+  if (hiddenGemBonus > 0.7) reasons.push("less mainstream");
 
-  const distance = Math.sqrt(
-    Math.pow(s.energy - target.energy, 2) +
-      Math.pow(s.danceability - target.danceability, 2) +
-      Math.pow(s.valence - target.valence, 2) +
-      Math.pow(s.tempo - target.tempo, 2)
-  );
+  const danceability = track.vector[0] * 100;
+  const energy = track.vector[1] * 100;
+  const mood = track.vector[2] * 100;
+  const acousticness = track.vector[3] * 100;
 
-  return 1 - distance / 2;
+  if (Math.abs(energy - controls.energy) < 18) {
+    reasons.push("matches energy");
+  }
+
+  if (Math.abs(danceability - controls.danceability) < 18) {
+    reasons.push("matches danceability");
+  }
+
+  if (Math.abs(mood - controls.mood) < 18) {
+    reasons.push("matches mood");
+  }
+
+  if (Math.abs(acousticness - controls.acousticness) < 18) {
+    reasons.push("matches acoustic preference");
+  }
+
+  return reasons.length > 0
+    ? reasons.join(", ")
+    : "Balanced match between your seed song and discovery settings.";
 };
 
-export const getBaselineRecommendations = (songs, seedSong, limit = 5) => {
-  return songs
-    .filter((song) => song.id !== seedSong.id)
-    .map((song) => {
-      const relevance = similarity(seedSong, song);
-      const popularityBoost = song.popularity / 100;
+export const getBaselineRecommendations = (tracks, seedTrack, limit = 5) => {
+  return tracks
+    .filter((track) => track.id !== seedTrack.id)
+    .map((track) => {
+      const relevance = cosineSimilarity(seedTrack.vector, track.vector);
+      const popularityBoost = track.popularity / 100;
 
       return {
-        ...song,
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        genre: track.genre,
+        popularity: track.popularity,
+        vector: track.vector,
         relevance,
         hiddenGemScore: 1 - popularityBoost,
         score: 0.75 * relevance + 0.25 * popularityBoost,
-        reason: "Similar to your seed song and favored by popularity.",
+        reason: "Similar to your seed song, with a boost for popularity.",
       };
     })
     .sort((a, b) => b.score - a.score)
@@ -66,49 +83,39 @@ export const getBaselineRecommendations = (songs, seedSong, limit = 5) => {
 };
 
 export const getHiddenGemRecommendations = (
-  songs,
-  seedSong,
+  tracks,
+  seedTrack,
   controls,
   limit = 5
 ) => {
   const discoveryWeight = controls.discovery / 100;
+  const userControlVector = createControlVector(controls);
 
-  return songs
-    .filter((song) => song.id !== seedSong.id)
-    .map((song) => {
-      const relevance = similarity(seedSong, song);
-      const longTailBonus = 1 - song.popularity / 100;
-      const controlMatch = sliderTargetMatch(song, controls);
+  return tracks
+    .filter((track) => track.id !== seedTrack.id)
+    .map((track) => {
+      const relevance = cosineSimilarity(seedTrack.vector, track.vector);
+      const controlMatch = cosineSimilarity(userControlVector, track.vector);
+      const hiddenGemBonus = 1 - track.popularity / 100;
 
       const score =
         0.5 * relevance +
         0.3 * controlMatch +
-        0.2 * discoveryWeight * longTailBonus;
+        0.2 * discoveryWeight * hiddenGemBonus;
 
       return {
-        ...song,
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        genre: track.genre,
+        popularity: track.popularity,
+        vector: track.vector,
         relevance,
-        hiddenGemScore: longTailBonus,
+        hiddenGemScore: hiddenGemBonus,
         score,
-        reason: getReason(song, controls, longTailBonus),
+        reason: getReason(track, controls, hiddenGemBonus),
       };
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
-};
-
-const getReason = (song, controls, longTailBonus) => {
-  const reasons = [];
-
-  if (longTailBonus > 0.65) reasons.push("less mainstream");
-  if (Math.abs(song.energy - controls.energy) < 18) reasons.push("matches energy");
-  if (Math.abs(song.danceability - controls.danceability) < 18)
-    reasons.push("matches danceability");
-  if (Math.abs(song.valence - controls.mood) < 18) reasons.push("matches mood");
-
-  if (reasons.length === 0) {
-    return "Balanced match between your seed song and discovery settings.";
-  }
-
-  return reasons.join(", ");
 };
