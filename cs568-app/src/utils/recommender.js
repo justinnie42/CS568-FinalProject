@@ -27,6 +27,13 @@ const createControlVector = (controls) => {
   ];
 };
 
+const getDiscoveryTargetPopularity = (discoveryWeight) => {
+  const mainstreamTarget = 70;
+  const hiddenGemTarget = 20;
+
+  return mainstreamTarget - discoveryWeight * (mainstreamTarget - hiddenGemTarget);
+};
+
 const getReason = (track, controls, hiddenGemBonus) => {
   const reasons = [];
 
@@ -89,6 +96,7 @@ export const getHiddenGemRecommendations = (
   limit = 5
 ) => {
   const discoveryWeight = controls.discovery / 100;
+  const targetPopularity = getDiscoveryTargetPopularity(discoveryWeight);
   const userControlVector = createControlVector(controls);
 
   return tracks
@@ -97,11 +105,13 @@ export const getHiddenGemRecommendations = (
       const relevance = cosineSimilarity(seedTrack.vector, track.vector);
       const controlMatch = cosineSimilarity(userControlVector, track.vector);
       const hiddenGemBonus = 1 - track.popularity / 100;
+      const discoveryMatch =
+        1 - Math.abs(track.popularity - targetPopularity) / 100;
 
       const score =
-        0.5 * relevance +
+        0.55 * relevance +
         0.3 * controlMatch +
-        0.2 * discoveryWeight * hiddenGemBonus;
+        0.15 * discoveryMatch;
 
       return {
         id: track.id,

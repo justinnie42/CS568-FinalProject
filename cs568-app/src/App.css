@@ -6,10 +6,8 @@ body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(115, 92, 255, 0.28), transparent 32rem),
-    linear-gradient(135deg, #090914 0%, #111827 50%, #18181b 100%);
-  color: #f8fafc;
+  background: #000;
+  color: #fff;
 }
 
 button,
@@ -22,21 +20,24 @@ input {
 .app {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 40px 0;
+  padding: 32px 0;
 }
 
 .hero {
   display: grid;
   grid-template-columns: 1.6fr 0.9fr;
-  gap: 24px;
+  gap: 16px;
   align-items: stretch;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  padding: 32px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1f1f1f 0%, #121212 100%);
 }
 
 .eyebrow,
 .step {
   margin: 0 0 8px;
-  color: #a78bfa;
+  color: #1ed760;
   font-weight: 700;
   font-size: 0.78rem;
   text-transform: uppercase;
@@ -47,7 +48,7 @@ h1 {
   margin: 0;
   font-size: clamp(2.4rem, 7vw, 5.5rem);
   line-height: 0.95;
-  letter-spacing: -0.08em;
+  letter-spacing: 0;
 }
 
 h2,
@@ -59,18 +60,17 @@ p {
 .subtitle {
   max-width: 720px;
   margin-top: 18px;
-  color: #cbd5e1;
+  color: #b3b3b3;
   font-size: 1.05rem;
   line-height: 1.7;
 }
 
 .privacy-card,
 .panel {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(18px);
-  border-radius: 28px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  border: 1px solid #242424;
+  background: #121212;
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 .privacy-card {
@@ -78,14 +78,14 @@ p {
 }
 
 .privacy-card p {
-  color: #cbd5e1;
+  color: #b3b3b3;
   line-height: 1.6;
   margin: 8px 0 0;
 }
 
 .panel {
   padding: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .section-header {
@@ -99,23 +99,23 @@ p {
 .section-header h2 {
   margin: 0;
   font-size: 1.45rem;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .field-label {
   display: block;
   margin: 18px 0 8px;
-  color: #e2e8f0;
+  color: #fff;
   font-weight: 650;
 }
 
 .select,
 .textarea {
   width: 100%;
-  color: #f8fafc;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
+  color: #fff;
+  background: #242424;
+  border: 1px solid #3e3e3e;
+  border-radius: 4px;
   padding: 14px 16px;
   outline: none;
 }
@@ -127,8 +127,8 @@ p {
 
 .select:focus,
 .textarea:focus {
-  border-color: #a78bfa;
-  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.16);
+  border-color: #1ed760;
+  box-shadow: 0 0 0 2px rgba(30, 215, 96, 0.25);
 }
 
 .seed-card {
@@ -138,8 +138,9 @@ p {
   gap: 16px;
   align-items: center;
   padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: #181818;
+  border: 1px solid #282828;
 }
 
 .seed-card h3 {
@@ -147,7 +148,7 @@ p {
 }
 
 .seed-card p {
-  color: #cbd5e1;
+  color: #b3b3b3;
   margin-bottom: 0;
 }
 
@@ -157,8 +158,8 @@ p {
   white-space: nowrap;
   border-radius: 999px;
   padding: 6px 10px;
-  background: rgba(167, 139, 250, 0.18);
-  color: #ddd6fe;
+  background: rgba(30, 215, 96, 0.12);
+  color: #1ed760;
   font-size: 0.78rem;
   font-weight: 750;
 }
@@ -171,8 +172,9 @@ p {
 
 .slider-card {
   padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: #181818;
+  border: 1px solid #282828;
 }
 
 .slider-top,
@@ -188,23 +190,23 @@ p {
 
 .slider-labels {
   margin-top: 8px;
-  color: #94a3b8;
+  color: #b3b3b3;
   font-size: 0.82rem;
 }
 
 input[type="range"] {
   width: 100%;
-  accent-color: #a78bfa;
+  accent-color: #1ed760;
 }
 
 .comparison-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 16px;
 }
 
 .recommendation-panel {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .song-list {
@@ -218,9 +220,15 @@ input[type="range"] {
   gap: 14px;
   align-items: center;
   padding: 16px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #181818;
+  border: 1px solid #282828;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.song-card:hover {
+  background: #242424;
+  border-color: #3e3e3e;
 }
 
 .rank {
@@ -229,8 +237,8 @@ input[type="range"] {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(167, 139, 250, 0.22);
-  color: #ddd6fe;
+  background: #1ed760;
+  color: #000;
   font-weight: 800;
 }
 
@@ -247,7 +255,7 @@ input[type="range"] {
 
 .song-main p {
   margin: 4px 0 0;
-  color: #cbd5e1;
+  color: #b3b3b3;
 }
 
 .reason {
@@ -260,7 +268,7 @@ input[type="range"] {
 
 .song-stats span {
   display: block;
-  color: #94a3b8;
+  color: #b3b3b3;
   font-size: 0.75rem;
 }
 
@@ -269,31 +277,12 @@ input[type="range"] {
   margin-top: 4px;
 }
 
-.ratings-block {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.rating-question {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
-  margin-top: 14px;
-  color: #e2e8f0;
-}
-
-.rating-buttons,
-.choice-row,
 .actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.rating,
-.choice,
 .primary-button,
 .secondary-button {
   border: 0;
@@ -303,27 +292,6 @@ input[type="range"] {
   transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
-.rating {
-  width: 34px;
-  height: 34px;
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.choice {
-  padding: 10px 14px;
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.rating.active,
-.choice.active {
-  color: #18181b;
-  background: #c4b5fd;
-}
-
-.rating:hover,
-.choice:hover,
 .primary-button:hover,
 .secondary-button:hover {
   transform: translateY(-1px);
@@ -340,17 +308,18 @@ input[type="range"] {
 }
 
 .primary-button {
-  color: #18181b;
-  background: #c4b5fd;
+  color: #000;
+  background: #1ed760;
 }
 
 .secondary-button {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  background: #242424;
+  border: 1px solid #3e3e3e;
 }
 
 .saved-count {
-  color: #94a3b8;
+  color: #b3b3b3;
 }
 
 @media (max-width: 900px) {
@@ -369,7 +338,4 @@ input[type="range"] {
     text-align: left;
   }
 
-  .rating-question {
-    grid-template-columns: 1fr;
-  }
 }

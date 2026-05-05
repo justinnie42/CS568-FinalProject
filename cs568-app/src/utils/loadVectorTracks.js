@@ -23,6 +23,6 @@ export const loadTracksFromVectorFile = async () => {
 
   return {
     features: data.features,
-    tracks: uniqueTracks.slice(0, 15000),
+    tracks: uniqueTracks,
   };
 };
