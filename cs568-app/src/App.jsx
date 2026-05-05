@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadTracksFromVectorFile } from "./utils/loadVectorTracks";
-import {
-  getBaselineRecommendations,
-  getHiddenGemRecommendations,
-} from "./utils/recommender";
+import { fetchRecommendations, fetchTracks } from "./utils/api";
 
 function App() {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [baselineRecommendations, setBaselineRecommendations] = useState([]);
+  const [hiddenGemRecommendations, setHiddenGemRecommendations] = useState([]);
+  const [backendInfo, setBackendInfo] = useState(null);
 
   const [seedId, setSeedId] = useState("");
   const [seedSearch, setSeedSearch] = useState("");
@@ -22,21 +22,29 @@ function App() {
     tempo: 50,
   });
 
+  const [ratings, setRatings] = useState({
+    baselineTasteFit: 0,
+    baselineComment: "",
+    hiddenGemTasteFit: 0,
+    hiddenGemComment: "",
+  });
+
   const [savedCount, setSavedCount] = useState(
     Number(localStorage.getItem("studyResponseCount") || 0)
   );
 
   useEffect(() => {
-    loadTracksFromVectorFile()
-      .then(({ tracks }) => {
+    fetchTracks()
+      .then(({ tracks, modelName, trackCount }) => {
         setTracks(tracks);
+        setBackendInfo({ modelName, trackCount });
         setSeedId(tracks[0]?.id || "");
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
         setLoadError(
-          "Could not load tracks_vectors.json. Make sure it is inside the public folder."
+          "Could not reach the Python recommendation backend. Start it with uvicorn before running the frontend."
         );
         setLoading(false);
       });
@@ -98,15 +106,54 @@ function App() {
     (track) => track.id === seedId
   );
 
-  const baselineRecommendations = useMemo(() => {
-    if (!seedTrack) return [];
-    return getBaselineRecommendations(tracks, seedTrack, 5);
-  }, [tracks, seedTrack]);
+  useEffect(() => {
+    if (!seedTrack) {
+      setBaselineRecommendations([]);
+      setHiddenGemRecommendations([]);
+      return;
+    }
 
-  const hiddenGemRecommendations = useMemo(() => {
-    if (!seedTrack) return [];
-    return getHiddenGemRecommendations(tracks, seedTrack, controls, 5);
-  }, [tracks, seedTrack, controls]);
+    let isCurrent = true;
+    setRecommendationsLoading(true);
+    setRatings({
+      baselineTasteFit: 0,
+      baselineComment: "",
+      hiddenGemTasteFit: 0,
+      hiddenGemComment: "",
+    });
+
+    fetchRecommendations({
+      seedTrackId: seedTrack.id,
+      controls,
+      limit: 5,
+    })
+      .then((data) => {
+        if (isCurrent) {
+          setBaselineRecommendations(data.baselineRecommendations);
+          setHiddenGemRecommendations(data.hiddenGemRecommendations);
+          setBackendInfo({
+            modelName: data.modelName,
+            trackCount: data.trackCount,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (isCurrent) {
+          setBaselineRecommendations([]);
+          setHiddenGemRecommendations([]);
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setRecommendationsLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [seedTrack, controls]);
 
   const updateControl = (key, value) => {
     setControls((prev) => ({
@@ -115,8 +162,20 @@ function App() {
     }));
   };
 
+  const updateRating = (key, value) => {
+    setRatings((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
   const saveResponse = () => {
     if (!seedTrack) return;
+
+    if (!ratings.baselineTasteFit || !ratings.hiddenGemTasteFit) {
+      alert("Please rate how well both lists fit your taste before saving.");
+      return;
+    }
 
     const existingResponses = JSON.parse(
       localStorage.getItem("studyResponses") || "[]"
@@ -127,6 +186,7 @@ function App() {
       seedSong: `${seedTrack.title} — ${seedTrack.artist}`,
       seedTrackId: seedTrack.id,
       controls,
+      ratings,
       baselineSongs: baselineRecommendations.map((track) => ({
         id: track.id,
         title: track.title,
@@ -172,6 +232,10 @@ function App() {
       mood: r.controls.mood,
       acousticness: r.controls.acousticness,
       tempo: r.controls.tempo,
+      baselineTasteFit: r.ratings?.baselineTasteFit || "",
+      baselineComment: r.ratings?.baselineComment || "",
+      hiddenGemTasteFit: r.ratings?.hiddenGemTasteFit || "",
+      hiddenGemComment: r.ratings?.hiddenGemComment || "",
 
       baselineSongs: r.baselineSongs
         .map((track) => `${track.title} — ${track.artist}`)
@@ -227,7 +291,7 @@ function App() {
       <main className="app">
         <section className="panel">
           <h1>Loading tracks...</h1>
-          <p className="subtitle">Reading your vector file.</p>
+          <p className="subtitle">Connecting to the Python FAISS backend.</p>
         </section>
       </main>
     );
@@ -239,9 +303,7 @@ function App() {
         <section className="panel">
           <h1>Could not load dataset</h1>
           <p className="subtitle">{loadError}</p>
-          <p className="subtitle">
-            Expected file path: <strong>public/tracks_vectors.json</strong>
-          </p>
+          <p className="subtitle">Expected backend URL: <strong>http://127.0.0.1:8000</strong></p>
         </section>
       </main>
     );
@@ -282,6 +344,9 @@ function App() {
           <p>
             Dataset loaded: <strong>{tracks.length.toLocaleString()}</strong>{" "}
             tracks.
+          </p>
+          <p>
+            Backend model: <strong>{backendInfo?.modelName || "loading"}</strong>
           </p>
         </div>
       </section>
@@ -417,7 +482,37 @@ function App() {
           subtitle="Controllable hidden-gems recommender"
           tracks={hiddenGemRecommendations}
           seedTrackId={seedTrack.id}
+          loading={recommendationsLoading}
         />
+      </section>
+
+      <section className="panel">
+        <div className="section-header">
+          <div>
+            <p className="step">Step 3</p>
+            <h2>Rate the recommendations</h2>
+          </div>
+        </div>
+
+        <div className="ratings-grid">
+          <ListRating
+            title="List A"
+            subtitle="How well did these songs fit your taste?"
+            value={ratings.baselineTasteFit}
+            comment={ratings.baselineComment}
+            onRatingChange={(value) => updateRating("baselineTasteFit", value)}
+            onCommentChange={(value) => updateRating("baselineComment", value)}
+          />
+
+          <ListRating
+            title="List B"
+            subtitle="How well did these songs fit your taste?"
+            value={ratings.hiddenGemTasteFit}
+            comment={ratings.hiddenGemComment}
+            onRatingChange={(value) => updateRating("hiddenGemTasteFit", value)}
+            onCommentChange={(value) => updateRating("hiddenGemComment", value)}
+          />
+        </div>
       </section>
 
       <section className="panel">
@@ -438,6 +533,60 @@ function App() {
         </div>
       </section>
     </main>
+  );
+}
+
+function ListRating({
+  title,
+  subtitle,
+  value,
+  comment,
+  onRatingChange,
+  onCommentChange,
+}) {
+  return (
+    <div className="rating-card">
+      <div className="rating-header">
+        <h3>{title}</h3>
+        <span className="badge">{value ? `${value}/5` : "Required"}</span>
+      </div>
+
+      <p>{subtitle}</p>
+
+      <div className="likert-row" role="radiogroup" aria-label={`${title} taste fit`}>
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <label
+            key={rating}
+            className={`likert-option ${value === rating ? "selected" : ""}`}
+          >
+            <input
+              type="radio"
+              name={`${title}-taste-fit`}
+              value={rating}
+              checked={value === rating}
+              onChange={() => onRatingChange(rating)}
+            />
+            <span>{rating}</span>
+          </label>
+        ))}
+      </div>
+
+      <div className="rating-scale-labels">
+        <span>Not my taste</span>
+        <span>Strong fit</span>
+      </div>
+
+      <label className="field-label" htmlFor={`${title}-comment`}>
+        Optional note
+      </label>
+      <textarea
+        id={`${title}-comment`}
+        className="textarea"
+        value={comment}
+        onChange={(e) => onCommentChange(e.target.value)}
+        placeholder="What made this list feel relevant or not?"
+      />
+    </div>
   );
 }
 
@@ -465,7 +614,7 @@ function Slider({ label, left, right, value, onChange }) {
   );
 }
 
-function RecommendationList({ title, subtitle, tracks, seedTrackId }) {
+function RecommendationList({ title, subtitle, tracks, seedTrackId, loading = false }) {
   const avgPopularity = average(tracks.map((track) => track.popularity));
 
   return (
@@ -480,6 +629,8 @@ function RecommendationList({ title, subtitle, tracks, seedTrackId }) {
       </div>
 
       <div className="song-list">
+        {loading && <p className="reason">Asking the Python backend for recommendations...</p>}
+
         {tracks.map((track, index) => (
           <SongCard key={`${seedTrackId}-${track.id}`} track={track} rank={index + 1} />
         ))}
